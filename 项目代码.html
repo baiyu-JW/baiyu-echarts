@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>深圳游戏数据可视化</title>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            background: #0b1a2f;
+            overflow: hidden;
+        }
+
+        #map {
+            width: 50%;
+            height: 50%;
+            position: absolute;
+            right: 0;
+            top: 0;
+            background: rgba(18, 34, 58, 0.85);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(64, 169, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 30, 60, 0.8), inset 0 0 30px rgba(0, 30, 60, 0.4);
+            border-radius: 0 12px 0 0;
+            border-bottom: none;
+            border-left: none;
+        }
+
+        #radar {
+            width: 50%;
+            height: 50%;
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            background: rgba(18, 34, 58, 0.85);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(64, 169, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 30, 60, 0.8), inset 0 0 30px rgba(0, 30, 60, 0.4);
+            border-radius: 0 0 12px 0;
+            border-top: none;
+            border-left: none;
+        }
+
+        #bar {
+            width: 50%;
+            height: 50%;
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: rgba(18, 34, 58, 0.85);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(64, 169, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 30, 60, 0.8), inset 0 0 30px rgba(0, 30, 60, 0.4);
+            border-radius: 12px 0 0 0;
+            border-bottom: none;
+            border-right: none;
+        }
+
+        #scatter {
+            width: 50%;
+            height: 50%;
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            background: rgba(18, 34, 58, 0.85);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(64, 169, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 30, 60, 0.8), inset 0 0 30px rgba(0, 30, 60, 0.4);
+            border-radius: 0 0 0 12px;
+            border-top: none;
+            border-right: none;
+        }
+
+        .chart-title {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 15px;
+            font-weight: 700;
+            color: #aaddff;
+            z-index: 10;
+            padding: 4px 20px;
+            background: rgba(0, 20, 40, 0.6);
+            border-radius: 20px;
+            border: 1px solid rgba(64, 169, 255, 0.3);
+            box-shadow: 0 0 20px rgba(64, 169, 255, 0.2);
+            letter-spacing: 2px;
+            white-space: nowrap;
+            text-shadow: 0 0 10px rgba(64, 169, 255, 0.5);
+        }
+
+        .loading-tip {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            color: #6a8fba;
+        }
+
+        #scatterChart,
+        #radarChart,
+        #barChart {
+            width: 100%;
+            height: 100%;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        #companyListPanel {
+            display: none;
+            height: calc(100% - 26px);
+            padding: 48px 18px 14px;
+            box-sizing: border-box;
+            color: #d8edff;
+        }
+
+        .company-list-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .company-list-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1.4;
+        }
+
+        .company-list-meta {
+            font-size: 12px;
+            color: #8ab8e6;
+            margin-top: 2px;
+        }
+
+        .company-list-close {
+            border: 1px solid rgba(64, 169, 255, 0.45);
+            background: rgba(8, 24, 43, 0.85);
+            color: #aaddff;
+            border-radius: 4px;
+            padding: 4px 9px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .company-list-close:hover {
+            border-color: #40a9ff;
+            color: #ffffff;
+        }
+
+        .company-list-table {
+            width: 100%;
+            height: calc(100% - 52px);
+            overflow: auto;
+            border: 1px solid rgba(64, 169, 255, 0.18);
+            background: rgba(7, 18, 32, 0.45);
+        }
+
+        .company-list-table table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .company-list-table th,
+        .company-list-table td {
+            padding: 7px 8px;
+            border-bottom: 1px solid rgba(64, 169, 255, 0.1);
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .company-list-table th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            color: #8ab8e6;
+            background: rgba(11, 26, 47, 0.96);
+            font-weight: 600;
+        }
+
+        .company-list-table td:first-child {
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+  
+    <script src="js/echarts.min.js"></script>
+	<script src="js/jquery.js"></script>
+    
+</head>
+<body>
+
+    <!-- 右上：地图 -->
+    <div id="map">
+        <div class="chart-title">🗺️ 深圳游戏产业分布热力</div>
+    </div>
+
+    <!-- 右下：雷达图 -->
+    <div id="radar">
+        <div class="chart-title">📊 框选企业综合画像（红色实线） vs 全市均值（灰色虚线）</div>
+        <div class="chart-container">
+            <div id="radarChart"></div>
+            <div class="loading-tip" id="radarLoading">⏳ 框选散点图数据后自动更新</div>
+            <div id="companyListPanel">
+                <div class="company-list-head">
+                    <div>
+                        <div class="company-list-title" id="companyListTitle">象限企业列表</div>
+                        <div class="company-list-meta" id="companyListMeta"></div>
+                    </div>
+                    <button class="company-list-close" id="backToRadarBtn">返回雷达图</button>
+                </div>
+                <div class="company-list-table" id="companyListTable"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 左上：柱状图 -->
+    <div id="bar">
+        <div class="chart-title">📊 深圳市各区企业分布</div>
+        <div class="chart-container">
+            <div id="barChart"></div>
+        </div>
+    </div>
+
+    <!-- 左下：散点图 -->
+    <div id="scatter">
+        <div class="chart-title">📊 注册资本 vs 实缴资本</div>
+        <div class="chart-container">
+            <div id="scatterChart"></div>
+            <div class="loading-tip" id="scatterLoading">⏳ 加载数据中...</div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // 第一部分：工具函数
+        // ============================================================
+
+        function parseMoney(str) {
+            if (!str) return 0;
+            var cleaned = str.replace(/[,，\s万(元)]/g, '').trim();
+            var num = parseFloat(cleaned);
+            return isNaN(num) ? 0 : num;
+        }
+
+        function getMapColorByValue(value) {
+            if (value > 3000) return '#cf1322';
+            if (value > 1500) return '#d46b08';
+            if (value > 500) return '#ad8b00';
+            return '#096dd9';
+        }
+
+        function getBarColorByValue(value) {
+            if (value > 3000) return '#ff4d4f';
+            if (value > 1500) return '#ffa940';
+            if (value > 500) return '#fadb14';
+            return '#40a9ff';
+        }
+
+        function getStatusColor(status) {
+            if (status === '开业' || status === '存续') return '#40a9ff';
+            if (status === '注销') return '#ff4d4f';
+            return '#909399';
+        }
+
+
+        // ============================================================
+        // 第二部分：雷达图计算函数
+        // ============================================================
+
+        function calcRadarData(companies) {
+            if (!companies || companies.length === 0) {
+                return [0, 0, 0, 0, 0];
+            }
+
+            var n = companies.length;
+            var currentYear = new Date().getFullYear();
+
+            var totalReg = 0;
+            var regCount = 0;
+            $.each(companies, function(i, d) {
+                var v = d.regCapital !== undefined ? d.regCapital : parseMoney(d.注册资本);
+                if (v > 0) { totalReg += v;
+                    regCount++; }
+            });
+            var avgReg = regCount > 0 ? totalReg / regCount : 0;
+
+            var totalPaid = 0;
+            var totalRegAll = 0;
+            $.each(companies, function(i, d) {
+                var reg = d.regCapital !== undefined ? d.regCapital : parseMoney(d.注册资本);
+                var paid = d.paidCapital !== undefined ? d.paidCapital : parseMoney(d.实缴资本);
+                totalPaid += paid;
+                totalRegAll += reg;
+            });
+            var paidRate = totalRegAll > 0 ? (totalPaid / totalRegAll) * 100 : 0;
+
+            var totalAge = 0;
+            var ageCount = 0;
+            $.each(companies, function(i, d) {
+                var year = d.foundYear !== undefined ? d.foundYear : parseInt(d.成立日期 ? d.成立日期.substring(0, 4) :
+                    0);
+                if (year && year > 1900) {
+                    totalAge += (currentYear - year);
+                    ageCount++;
+                }
+            });
+            var avgAge = ageCount > 0 ? totalAge / ageCount : 0;
+
+            var activeCount = 0;
+            $.each(companies, function(i, d) {
+                var status = d.status || d.经营状态 || '';
+                if (status === '开业' || status === '存续') {
+                    activeCount++;
+                }
+            });
+            var survivalRate = (activeCount / n) * 100;
+
+            var districtSet = {};
+            $.each(companies, function(i, d) {
+                var dist = d.district || d.所属区县 || '';
+                if (dist) {
+                    districtSet[dist.trim()] = true;
+                }
+            });
+            var districtCount = Object.keys(districtSet).length;
+
+            return [
+                parseFloat(avgReg.toFixed(0)),
+                parseFloat(paidRate.toFixed(1)),
+                parseFloat(avgAge.toFixed(1)),
+                parseFloat(survivalRate.toFixed(1)),
+                districtCount
+            ];
+        }
+
+
+        // ============================================================
+        // 第三部分：全局变量
+        // ============================================================
+
+        var allCompanies = [];
+        var scatterData = [];
+        var scatterChart = null;
+        var radarChart = null;
+        var mapChart = null;
+        var barchart = null;
+        var currentIndex = 0;
+        var timer = null;
+        var xData = [];
+        var yData = [];
+        var allDistrictData = [];
+
+
+        // ============================================================
+        // 第四部分：散点图渲染（左下）
+        // ============================================================
+
+        function renderScatter(data) {
+            // 准备散点图数据：x轴=注册资本，y轴=实缴资本
+            scatterData = [];
+
+            $.each(data, function(i, item) {
+                var regCapital = parseMoney(item.注册资本);
+                var paidCapital = parseMoney(item.实缴资本);
+                var status = item.经营状态 || '存续';
+                var district = item.所属区县 || '未知';
+                var name = item.企业名称 || '未知企业';
+
+                if (regCapital > 0 && paidCapital > 0) {
+                    scatterData.push({
+                        name: name,
+                        value: [regCapital, paidCapital],
+                        regCapital: regCapital,
+                        paidCapital: paidCapital,
+                        status: status,
+                        district: district
+                    });
+                }
+            });
+
+            // 如果数据太少，补充演示数据
+            if (scatterData.length < 5) {
+                scatterData = [
+                    { name: '腾讯游戏', value: [5000, 4500], regCapital: 5000, paidCapital: 4500, status: '存续',
+                        district: '南山区' },
+                    { name: '网易游戏', value: [3000, 2800], regCapital: 3000, paidCapital: 2800, status: '存续',
+                        district: '南山区' },
+                    { name: '创梦天地', value: [2000, 1500], regCapital: 2000, paidCapital: 1500, status: '存续',
+                        district: '南山区' },
+                    { name: '中手游', value: [1500, 1200], regCapital: 1500, paidCapital: 1200, status: '存续',
+                        district: '南山区' },
+                    { name: '冰川网络', value: [1000, 800], regCapital: 1000, paidCapital: 800, status: '存续',
+                        district: '南山区' },
+                    { name: '金科文化', value: [800, 200], regCapital: 800, paidCapital: 200, status: '存续',
+                        district: '福田区' },
+                    { name: '奥飞娱乐', value: [500, 100], regCapital: 500, paidCapital: 100, status: '存续',
+                        district: '福田区' },
+                    { name: '三七互娱', value: [300, 50], regCapital: 300, paidCapital: 50, status: '存续',
+                        district: '南山区' },
+                    { name: '完美世界', value: [200, 180], regCapital: 200, paidCapital: 180, status: '注销',
+                        district: '南山区' },
+                    { name: '巨人网络', value: [100, 20], regCapital: 100, paidCapital: 20, status: '存续',
+                        district: '宝安区' }
+                ];
+            }
+
+            // 保存到全局
+            window._scatterData = scatterData;
+
+            // 配置散点图
+            var scatterOption = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        var d = params.data;
+                        return '<strong>' + d.name + '</strong><br/>' +
+                            '注册资本：' + d.value[0].toFixed(0) + ' 万元<br/>' +
+                            '实缴资本：' + d.value[1].toFixed(0) + ' 万元<br/>' +
+                            '经营状态：' + d.status + '<br/>' +
+                            '所属区县：' + d.district;
+                    },
+                    backgroundColor: 'rgba(11, 26, 47, 0.9)',
+                    borderColor: '#40a9ff',
+                    textStyle: { color: '#fff' }
+                },
+                grid: {
+                    left: '10%',
+                    right: '10%',
+                    top: '12%',
+                    bottom: '20%'
+                },
+                xAxis: {
+                    name: '注册资本（万元）',
+                    type: 'log',
+                    nameLocation: 'center',
+                    nameGap: 35,
+                    axisLabel: {
+                        fontSize: 10,
+                        color: '#8ab8e6',
+                        formatter: function(value) {
+                            if (value >= 1000) return (value / 1000) + 'k';
+                            return value;
+                        }
+                    },
+                    splitLine: { show: false },
+                    axisLine: { lineStyle: { color: 'rgba(64, 169, 255, 0.3)' } },
+                    nameTextStyle: { color: '#aaddff' },
+                    min: 1,
+                    max: 10000
+                },
+                yAxis: {
+                    name: '实缴资本（万元）',
+                    type: 'log',
+                    nameLocation: 'center',
+                    nameGap: 45,
+                    axisLabel: {
+                        fontSize: 10,
+                        color: '#8ab8e6',
+                        formatter: function(value) {
+                            if (value >= 1000) return (value / 1000) + 'k';
+                            return value;
+                        }
+                    },
+                    splitLine: { show: false },
+                    axisLine: { lineStyle: { color: 'rgba(64, 169, 255, 0.3)' } },
+                    nameTextStyle: { color: '#aaddff' },
+                    min: 1,
+                    max: 10000
+                },
+                series: [{
+                    type: 'scatter',
+                    data: scatterData,
+                    symbolSize: function(params) {
+                        var size = Math.log(params.regCapital + 1) * 2 + 4;
+                        return Math.min(Math.max(size, 6), 30);
+                    },
+                    itemStyle: {
+                        color: '#ffffff',
+                        opacity: 0.8,
+                        shadowBlur: 6,
+                        shadowColor: 'rgba(0,0,0,0.3)'
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            opacity: 1,
+                            shadowBlur: 16,
+                            shadowColor: 'rgba(64,169,255,0.4)'
+                        },
+                        label: {
+                            show: true,
+                            formatter: function(params) {
+                                return params.data.name;
+                            },
+                            position: 'top',
+                            color: '#ffffff',
+                            fontSize: 10
+                        }
+                    }
+                }],
+                graphic: [{
+                    type: 'line',
+                    shape: { x1: '50%', y1: '2%', x2: '50%', y2: '98%' },
+                    style: { stroke: 'rgba(64,169,255,0.3)', lineWidth: 2, lineDash: [6, 4] },
+                    z: 10
+                }, {
+                    type: 'line',
+                    shape: { x1: '2%', y1: '50%', x2: '98%', y2: '50%' },
+                    style: { stroke: 'rgba(64,169,255,0.3)', lineWidth: 2, lineDash: [6, 4] },
+                    z: 10
+                }, {
+                    type: 'text',
+                    left: '53%',
+                    top: '2%',
+                    style: {
+                        text: '高注册\n高实缴',
+                        fill: '#40a9ff',
+                        fontSize: 11,
+                        fontWeight: 'bold',
+                        textShadow: '0 0 10px rgba(0,0,0,0.8)'
+                    },
+                    z: 20
+                }, {
+                    type: 'text',
+                    left: '2%',
+                    top: '2%',
+                    style: {
+                        text: '低注册\n高实缴',
+                        fill: '#67c23a',
+                        fontSize: 11,
+                        fontWeight: 'bold',
+                        textShadow: '0 0 10px rgba(0,0,0,0.8)'
+                    },
+                    z: 20
+                }, {
+                    type: 'text',
+                    left: '53%',
+                    top: '53%',
+                    style: {
+                        text: '高注册\n低实缴',
+                        fill: '#ff4d4f',
+                        fontSize: 11,
+                        fontWeight: 'bold',
+                        textShadow: '0 0 10px rgba(0,0,0,0.8)'
+                    },
+                    z: 20
+                }, {
+                    type: 'text',
+                    left: '2%',
+                    top: '53%',
+                    style: {
+                        text: '低注册\n低实缴',
+                        fill: '#909399',
+                        fontSize: 11,
+                        fontWeight: 'bold',
+                        textShadow: '0 0 10px rgba(0,0,0,0.8)'
+                    },
+                    z: 20
+                }],
+                brush: {
+                    toolbox: ['rect', 'polygon', 'clear'],
+                    brushStyle: {
+                        borderColor: '#40a9ff',
+                        borderWidth: 2,
+                        color: 'rgba(64, 169, 255, 0.15)'
+                    },
+                    throttleDelay: 200,
+                    xAxisIndex: 0,
+                    yAxisIndex: 0,
+                    brushLink: [0]
+                },
+                dataZoom: [{
+                    type: 'slider',
+                    xAxisIndex: 0,
+                    height: 12,
+                    bottom: 4,
+                    start: 0,
+                    end: 100,
+                    textStyle: { color: '#8ab8e6' },
+                    fillerColor: 'rgba(64, 169, 255, 0.2)',
+                    borderColor: 'rgba(64, 169, 255, 0.3)'
+                }, {
+                    type: 'slider',
+                    yAxisIndex: 0,
+                    width: 12,
+                    right: 4,
+                    start: 0,
+                    end: 100,
+                    textStyle: { color: '#8ab8e6' },
+                    fillerColor: 'rgba(64, 169, 255, 0.2)',
+                    borderColor: 'rgba(64, 169, 255, 0.3)'
+                }]
+            };
+
+            // 初始化散点图 - 使用 scatterChart
+            scatterChart = echarts.init(document.getElementById('scatterChart'));
+            scatterChart.setOption(scatterOption);
+
+            // 添加brush选择事件
+            scatterChart.on('brushSelected', function(params) {
+                var selected = [];
+                var brushComponent = params.batch[0];
+
+                if (brushComponent && brushComponent.selected) {
+                    var dataIndices = brushComponent.selected[0].dataIndex;
+                    if (dataIndices && dataIndices.length > 0) {
+                        $.each(dataIndices, function(i, index) {
+                            if (scatterData[index]) {
+                                selected.push(scatterData[index]);
+                            }
+                        });
+                    }
+                }
+
+                if (selected.length > 0) {
+                    var radarCompanies = selected.map(function(item) {
+                        return {
+                            regCapital: item.regCapital,
+                            paidCapital: item.paidCapital,
+                            status: item.status,
+                            district: item.district,
+                            foundYear: item.foundYear || 2000
+                        };
+                    });
+                    renderRadarChart(radarCompanies);
+
+                    var loadingEl = document.getElementById('radarLoading');
+                    if (loadingEl) {
+                        loadingEl.textContent = '✅ 已框选 ' + selected.length + ' 家企业';
+                        loadingEl.style.color = '#67c23a';
+                        loadingEl.style.display = 'block';
+                        setTimeout(function() {
+                            loadingEl.style.display = 'none';
+                        }, 2000);
+                    }
+                }
+            });
+
+            // 点击事件
+            scatterChart.on('click', function(params) {
+                if (params.data) {
+                    alert('企业名称：' + params.data.name +
+                        '\n注册资本：' + params.data.regCapital + ' 万元' +
+                        '\n实缴资本：' + params.data.paidCapital + ' 万元' +
+                        '\n经营状态：' + params.data.status +
+                        '\n所属区县：' + params.data.district);
+                }
+            });
+
+            window.addEventListener('resize', function() {
+                if (scatterChart) scatterChart.resize();
+            });
+
+            return scatterChart;
+        }
+
+        var quadrantConfig = {
+            regThreshold: 1000,
+            paidThreshold: 100,
+            defs: {
+                giant: { key: 'giant', name: '真巨头', desc: '高注册 + 高实缴', color: '#40a9ff' },
+                compact: { key: 'compact', name: '小而美', desc: '低注册 + 高实缴', color: '#67c23a' },
+                inflated: { key: 'inflated', name: '虚胖玩家', desc: '高注册 + 低实缴', color: '#ff4d4f' },
+                startup: { key: 'startup', name: '草根起步', desc: '低注册 + 低实缴', color: '#909399' }
+            }
+        };
+
+        function getNormalizedCompany(item) {
+            var regCapital = parseMoney(item.注册资本);
+            var paidCapital = parseMoney(item.实缴资本);
+            var foundYear = parseInt((item.成立日期 || '').substring(0, 4), 10);
+            return {
+                name: item.企业名称 || '未知企业',
+                regCapital: regCapital,
+                paidCapital: paidCapital,
+                status: item.经营状态 || '未知',
+                district: item.所属区县 || '未知',
+                foundYear: isNaN(foundYear) ? undefined : foundYear,
+                paidRate: regCapital > 0 ? paidCapital / regCapital : 0
+            };
+        }
+
+        function getStatusSeriesName(status) {
+            if (status === '开业' || status === '存续') return '存续/开业';
+            if (status === '注销') return '注销';
+            if (status === '吊销') return '吊销';
+            return '其他状态';
+        }
+
+        function getStatusSeriesColor(seriesName) {
+            if (seriesName === '存续/开业') return '#2fcb8f';
+            if (seriesName === '注销') return '#ff5f6d';
+            if (seriesName === '吊销') return '#f5a623';
+            return '#8aa4c8';
+        }
+
+        function getPaidRateColor(rate) {
+            if (rate >= 0.75) return '#52c41a';
+            if (rate >= 0.35) return '#f6c85f';
+            return '#ff4d4f';
+        }
+
+        function getQuadrantKey(regCapital, paidCapital) {
+            var highReg = regCapital >= quadrantConfig.regThreshold;
+            var highPaid = paidCapital >= quadrantConfig.paidThreshold;
+            if (highReg && highPaid) return 'giant';
+            if (!highReg && highPaid) return 'compact';
+            if (highReg && !highPaid) return 'inflated';
+            return 'startup';
+        }
+
+        function formatMoneyWan(value) {
+            if (value >= 10000) return (value / 10000).toFixed(1) + '亿';
+            return Math.round(value).toLocaleString() + '万';
+        }
+
+        function showRadarPanel(selectedCompanies) {
+            var listPanel = document.getElementById('companyListPanel');
+            var radarEl = document.getElementById('radarChart');
+            if (listPanel) listPanel.style.display = 'none';
+            if (radarEl) radarEl.style.display = 'block';
+            if (radarChart) {
+                setTimeout(function() { radarChart.resize(); }, 0);
+            }
+            if (selectedCompanies) renderRadarChart(selectedCompanies);
+        }
+
+        function showCompanyListPanel(title, companies) {
+            var listPanel = document.getElementById('companyListPanel');
+            var radarEl = document.getElementById('radarChart');
+            var loadingEl = document.getElementById('radarLoading');
+            if (!listPanel) return;
+            if (radarEl) radarEl.style.display = 'none';
+            if (loadingEl) loadingEl.style.display = 'none';
+            listPanel.style.display = 'block';
+
+            var sorted = (companies || []).slice().sort(function(a, b) {
+                return (b.regCapital + b.paidCapital) - (a.regCapital + a.paidCapital);
+            });
+            var regTotal = 0;
+            var paidTotal = 0;
+            $.each(sorted, function(i, d) {
+                regTotal += d.regCapital;
+                paidTotal += d.paidCapital;
+            });
+            $('#companyListTitle').text(title);
+            $('#companyListMeta').text(
+                sorted.length + ' 家企业 | 注册资本 ' + formatMoneyWan(regTotal) +
+                ' | 实缴资本 ' + formatMoneyWan(paidTotal) +
+                ' | 到位率 ' + (regTotal > 0 ? (paidTotal / regTotal * 100).toFixed(1) : '0.0') + '%'
+            );
+
+            var rows = sorted.slice(0, 300).map(function(d) {
+                return '<tr>' +
+                    '<td title="' + d.name + '">' + d.name + '</td>' +
+                    '<td>' + d.district + '</td>' +
+                    '<td>' + d.status + '</td>' +
+                    '<td>' + formatMoneyWan(d.regCapital) + '</td>' +
+                    '<td>' + formatMoneyWan(d.paidCapital) + '</td>' +
+                    '<td>' + (d.regCapital > 0 ? (d.paidCapital / d.regCapital * 100).toFixed(1) : '0.0') + '%</td>' +
+                    '</tr>';
+            }).join('');
+            if (sorted.length > 300) {
+                rows += '<tr><td colspan="6">仅展示资本规模最高的前 300 家，完整象限共 ' + sorted.length + ' 家。</td></tr>';
+            }
+            $('#companyListTable').html(
+                '<table><thead><tr>' +
+                '<th>企业名称</th><th>区县</th><th>状态</th><th>注册资本</th><th>实缴资本</th><th>到位率</th>' +
+                '</tr></thead><tbody>' + rows + '</tbody></table>'
+            );
+        }
+
+        function buildAggregatedBubbleData(data) {
+            var groupMap = {};
+            var companies = [];
+            $.each(data, function(i, item) {
+                var company = getNormalizedCompany(item);
+                if (company.regCapital <= 0) return;
+                companies.push(company);
+                var statusGroup = getStatusSeriesName(company.status);
+                var key = company.district + '|' + statusGroup;
+                if (!groupMap[key]) {
+                    groupMap[key] = {
+                        name: company.district + ' - ' + statusGroup,
+                        district: company.district,
+                        status: statusGroup,
+                        regCapital: 0,
+                        paidCapital: 0,
+                        count: 0,
+                        companies: []
+                    };
+                }
+                groupMap[key].regCapital += company.regCapital;
+                groupMap[key].paidCapital += company.paidCapital;
+                groupMap[key].count += 1;
+                groupMap[key].companies.push(company);
+            });
+
+            var bubbles = [];
+            $.each(groupMap, function(key, group) {
+                var paidForLog = Math.max(group.paidCapital, 1);
+                var paidRate = group.regCapital > 0 ? group.paidCapital / group.regCapital : 0;
+                var quadrant = getQuadrantKey(group.regCapital, group.paidCapital);
+                bubbles.push({
+                    name: group.name,
+                    value: [group.regCapital, paidForLog, group.count, paidRate],
+                    itemStyle: {
+                        borderColor: getPaidRateColor(paidRate),
+                        borderWidth: 2
+                    },
+                    rawPaidCapital: group.paidCapital,
+                    regCapital: group.regCapital,
+                    paidCapital: group.paidCapital,
+                    paidRate: paidRate,
+                    count: group.count,
+                    status: group.status,
+                    district: group.district,
+                    quadrant: quadrant,
+                    companies: group.companies
+                });
+            });
+
+            return { bubbles: bubbles, companies: companies };
+        }
+
+        function getQuadrantSummary(companies) {
+            var result = {
+                giant: { count: 0, companies: [] },
+                compact: { count: 0, companies: [] },
+                inflated: { count: 0, companies: [] },
+                startup: { count: 0, companies: [] }
+            };
+            $.each(companies, function(i, company) {
+                var key = getQuadrantKey(company.regCapital, company.paidCapital);
+                result[key].count += 1;
+                result[key].companies.push(company);
+            });
+            return result;
+        }
+
+        function buildQuadrantGraphics(summary, total) {
+            function label(key, left, top) {
+                var def = quadrantConfig.defs[key];
+                var percent = total > 0 ? (summary[key].count / total * 100).toFixed(1) : '0.0';
+                return {
+                    type: 'group',
+                    left: left,
+                    top: top,
+                    cursor: 'pointer',
+                    onclick: function() {
+                        showCompanyListPanel(def.name + '：' + def.desc, summary[key].companies);
+                    },
+                    children: [{
+                        type: 'rect',
+                        shape: { width: 114, height: 48, r: 4 },
+                        style: {
+                            fill: 'rgba(5, 18, 34, 0.58)',
+                            stroke: def.color,
+                            lineWidth: 1,
+                            opacity: 0.9
+                        }
+                    }, {
+                        type: 'text',
+                        left: 8,
+                        top: 7,
+                        style: {
+                            text: def.name + '\n' + percent + '% / ' + summary[key].count + '家',
+                            fill: def.color,
+                            fontSize: 12,
+                            fontWeight: 'bold',
+                            lineHeight: 17,
+                            textShadow: '0 0 8px rgba(0,0,0,0.9)'
+                        }
+                    }]
+                };
+            }
+            return [
+                label('compact', '13%', '15%'),
+                label('giant', '62%', '15%'),
+                label('startup', '13%', '58%'),
+                label('inflated', '62%', '58%')
+            ];
+        }
+
+        function renderScatter(data) {
+            var result = buildAggregatedBubbleData(data);
+            scatterData = result.bubbles;
+            allCompanies = result.companies;
+            window._scatterData = scatterData;
+
+            var loadingEl = document.getElementById('scatterLoading');
+            if (loadingEl) loadingEl.style.display = 'none';
+
+            var summary = getQuadrantSummary(allCompanies);
+            var seriesBuckets = {
+                '存续/开业': [],
+                '注销': [],
+                '吊销': [],
+                '其他状态': []
+            };
+            $.each(scatterData, function(i, item) {
+                seriesBuckets[item.status].push(item);
+            });
+
+            var maxCount = 1;
+            $.each(scatterData, function(i, item) {
+                maxCount = Math.max(maxCount, item.count);
+            });
+
+            var baseSeries = Object.keys(seriesBuckets).map(function(statusName) {
+                return {
+                    name: statusName,
+                    type: 'scatter',
+                    data: seriesBuckets[statusName],
+                    symbolSize: function(value, params) {
+                        var count = params.data.count || value[2] || 1;
+                        return Math.min(44, Math.max(10, 8 + Math.sqrt(count / maxCount) * 34));
+                    },
+                    itemStyle: {
+                        color: getStatusSeriesColor(statusName),
+                        opacity: 0.78,
+                        shadowBlur: 10,
+                        shadowColor: 'rgba(0,0,0,0.35)'
+                    },
+                    emphasis: {
+                        scale: 1.18,
+                        itemStyle: {
+                            opacity: 1,
+                            shadowBlur: 22,
+                            shadowColor: 'rgba(64,169,255,0.55)'
+                        },
+                        label: {
+                            show: true,
+                            formatter: function(params) {
+                                return params.data.district + ' ' + params.data.status;
+                            },
+                            position: 'top',
+                            color: '#ffffff',
+                            fontSize: 11
+                        }
+                    },
+                    markLine: {
+                        silent: true,
+                        symbol: ['none', 'none'],
+                        lineStyle: {
+                            color: 'rgba(170,221,255,0.46)',
+                            type: 'dashed',
+                            width: 1.5
+                        },
+                        label: { show: false },
+                        data: [
+                            { xAxis: quadrantConfig.regThreshold },
+                            { yAxis: quadrantConfig.paidThreshold }
+                        ]
+                    }
+                };
+            }).filter(function(series) {
+                return series.data.length > 0;
+            });
+
+            var rateLegendSeries = {
+                name: '实缴/注册比例',
+                type: 'scatter',
+                legendHoverLink: false,
+                data: [
+                    { value: [1, 1, 0, 0] },
+                    { value: [1, 1, 0, 1] }
+                ],
+                symbolSize: 0,
+                silent: true,
+                tooltip: { show: false },
+                itemStyle: { opacity: 0 }
+            };
+
+            var chartSeries = baseSeries.concat([rateLegendSeries]);
+
+            var option = {
+                color: ['#2fcb8f', '#ff5f6d', '#f5a623', '#8aa4c8'],
+                legend: {
+                    data: baseSeries.map(function(series) { return series.name; }),
+                    top: 46,
+                    right: 18,
+                    itemWidth: 10,
+                    itemHeight: 10,
+                    textStyle: { color: '#aaddff', fontSize: 11 }
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        var d = params.data;
+                        return '<strong>' + d.district + '｜' + d.status + '</strong><br/>' +
+                            '企业数量：' + d.count + ' 家<br/>' +
+                            '注册资本：' + formatMoneyWan(d.regCapital) + '<br/>' +
+                            '实缴资本：' + formatMoneyWan(d.paidCapital) + '<br/>' +
+                            '到位率：' + (d.paidRate * 100).toFixed(1) + '%<br/>' +
+                            '象限：' + quadrantConfig.defs[d.quadrant].name + '<br/>' +
+                            '样例：' + d.companies.slice(0, 3).map(function(c) { return c.name; }).join('、');
+                    },
+                    backgroundColor: 'rgba(11, 26, 47, 0.94)',
+                    borderColor: '#40a9ff',
+                    textStyle: { color: '#fff' }
+                },
+                grid: {
+                    left: '10%',
+                    right: '13%',
+                    top: '17%',
+                    bottom: '20%'
+                },
+                xAxis: {
+                    name: '注册资本（万元）',
+                    type: 'log',
+                    nameLocation: 'center',
+                    nameGap: 35,
+                    min: 1,
+                    axisLabel: {
+                        fontSize: 10,
+                        color: '#8ab8e6',
+                        formatter: function(value) {
+                            if (value >= 10000) return (value / 10000) + 'w';
+                            if (value >= 1000) return (value / 1000) + 'k';
+                            return value;
+                        }
+                    },
+                    splitLine: { lineStyle: { color: 'rgba(64, 169, 255, 0.08)' } },
+                    axisLine: { lineStyle: { color: 'rgba(64, 169, 255, 0.35)' } },
+                    nameTextStyle: { color: '#aaddff' }
+                },
+                yAxis: {
+                    name: '实缴资本（万元）',
+                    type: 'log',
+                    nameLocation: 'center',
+                    nameGap: 45,
+                    min: 1,
+                    axisLabel: {
+                        fontSize: 10,
+                        color: '#8ab8e6',
+                        formatter: function(value) {
+                            if (value >= 10000) return (value / 10000) + 'w';
+                            if (value >= 1000) return (value / 1000) + 'k';
+                            return value;
+                        }
+                    },
+                    splitLine: { lineStyle: { color: 'rgba(64, 169, 255, 0.08)' } },
+                    axisLine: { lineStyle: { color: 'rgba(64, 169, 255, 0.35)' } },
+                    nameTextStyle: { color: '#aaddff' }
+                },
+                visualMap: {
+                    type: 'continuous',
+                    min: 0,
+                    max: 1,
+                    dimension: 3,
+                    calculable: true,
+                    orient: 'vertical',
+                    right: 18,
+                    top: 92,
+                    itemWidth: 10,
+                    itemHeight: 86,
+                    text: ['高', '低'],
+                    precision: 2,
+                    formatter: function(value) {
+                        return Math.round(value * 100) + '%';
+                    },
+                    textStyle: { color: '#8ab8e6', fontSize: 10 },
+                    handleStyle: {
+                        color: '#d8edff',
+                        borderColor: '#40a9ff',
+                        borderWidth: 1
+                    },
+                    inRange: { opacity: [0.72, 1] },
+                    outOfRange: { opacity: 0.08 },
+                    controller: {
+                        inRange: { color: ['#ff4d4f', '#f6c85f', '#52c41a'] },
+                        outOfRange: { color: '#33465f' }
+                    },
+                    seriesIndex: baseSeries.map(function(_, i) { return i; })
+                },
+                brush: {
+                    toolbox: ['rect', 'polygon', 'clear'],
+                    brushStyle: {
+                        borderColor: '#40a9ff',
+                        borderWidth: 2,
+                        color: 'rgba(64, 169, 255, 0.15)'
+                    },
+                    throttleDelay: 200,
+                    xAxisIndex: 0,
+                    yAxisIndex: 0
+                },
+                dataZoom: [{
+                    type: 'slider',
+                    xAxisIndex: 0,
+                    height: 12,
+                    bottom: 4,
+                    start: 0,
+                    end: 100,
+                    textStyle: { color: '#8ab8e6' },
+                    fillerColor: 'rgba(64, 169, 255, 0.2)',
+                    borderColor: 'rgba(64, 169, 255, 0.3)'
+                }, {
+                    type: 'slider',
+                    yAxisIndex: 0,
+                    width: 12,
+                    right: 4,
+                    start: 0,
+                    end: 100,
+                    textStyle: { color: '#8ab8e6' },
+                    fillerColor: 'rgba(64, 169, 255, 0.2)',
+                    borderColor: 'rgba(64, 169, 255, 0.3)'
+                }],
+                graphic: buildQuadrantGraphics(summary, allCompanies.length),
+                series: chartSeries
+            };
+
+            if (scatterChart) scatterChart.dispose();
+            scatterChart = echarts.init(document.getElementById('scatterChart'));
+            scatterChart.setOption(option, true);
+
+            scatterChart.on('brushSelected', function(params) {
+                var selectedCompanies = [];
+                var seen = {};
+                var batch = params.batch && params.batch[0];
+                if (batch && batch.selected) {
+                    $.each(batch.selected, function(i, selectedSeries) {
+                        $.each(selectedSeries.dataIndex || [], function(j, index) {
+                            var sourceItem = baseSeries[selectedSeries.seriesIndex] &&
+                                baseSeries[selectedSeries.seriesIndex].data[index];
+                            if (sourceItem) {
+                                $.each(sourceItem.companies, function(k, company) {
+                                    var key = company.name + '|' + company.district + '|' + k;
+                                    if (!seen[key]) {
+                                        seen[key] = true;
+                                        selectedCompanies.push(company);
+                                    }
+                                });
+                            }
+                        });
+                    });
+                }
+                if (selectedCompanies.length > 0) {
+                    showRadarPanel(selectedCompanies);
+                }
+            });
+
+            scatterChart.on('mouseover', function(params) {
+                if (!params.data || params.componentType !== 'series') return;
+                scatterChart.setOption({
+                    series: chartSeries.concat([{
+                        name: 'hoverRipple',
+                        type: 'effectScatter',
+                        coordinateSystem: 'cartesian2d',
+                        legendHoverLink: false,
+                        data: [params.data],
+                        symbolSize: 42,
+                        showEffectOn: 'render',
+                        rippleEffect: { brushType: 'stroke', scale: 2.6, period: 3 },
+                        itemStyle: { color: '#aaddff', opacity: 0.35 },
+                        zlevel: 3,
+                        silent: true
+                    }])
+                }, false);
+            });
+
+            scatterChart.on('mouseout', function() {
+                scatterChart.setOption({ series: chartSeries }, false);
+            });
+
+            scatterChart.getZr().on('click', function(event) {
+                if (event.target) return;
+                var point = [event.offsetX, event.offsetY];
+                if (!scatterChart.containPixel({ gridIndex: 0 }, point)) return;
+                var value = scatterChart.convertFromPixel({ gridIndex: 0 }, point);
+                var key = getQuadrantKey(value[0], value[1]);
+                var def = quadrantConfig.defs[key];
+                showCompanyListPanel(def.name + '：' + def.desc, summary[key].companies);
+            });
+
+            $('#backToRadarBtn').off('click').on('click', function() {
+                showRadarPanel([]);
+            });
+
+            return scatterChart;
+        }
+
+
+        // ============================================================
+        // 第五部分：雷达图渲染（右下）
+        // ============================================================
+
+        function renderRadarChart(selectedCompanies) {
+            var loadingEl = document.getElementById('radarLoading');
+            if (loadingEl) loadingEl.style.display = 'none';
+
+            if (!selectedCompanies) selectedCompanies = [];
+
+            var allValues = calcRadarData(allCompanies);
+            var selectedValues = calcRadarData(selectedCompanies);
+
+            if (!radarChart) {
+                radarChart = echarts.init(document.getElementById('radarChart'));
+            }
+
+            var option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        var v = params.value;
+                        return '📌 ' + params.name + '<br/>' +
+                            '注册资本实力：' + v[0] + ' 万元<br/>' +
+                            '资金到位率：' + v[1] + ' %<br/>' +
+                            '企业成熟度：' + v[2] + ' 年<br/>' +
+                            '存活健康度：' + v[3] + ' %<br/>' +
+                            '区县集中度：覆盖 ' + v[4] + ' 个区';
+                    },
+                    backgroundColor: 'rgba(11, 26, 47, 0.9)',
+                    borderColor: '#40a9ff',
+                    textStyle: { color: '#fff' }
+                },
+                legend: {
+                    data: ['框选群体', '全市均值'],
+                    bottom: 5,
+                    left: 'center',
+                    icon: 'roundRect',
+                    itemWidth: 16,
+                    itemHeight: 8,
+                    textStyle: { color: '#aaddff' }
+                },
+                radar: {
+                    center: ['50%', '48%'],
+                    radius: '60%',
+                    shape: 'polygon',
+                    indicator: [
+                        { name: '注册资本实力', max: 5000 },
+                        { name: '资金到位率', max: 100 },
+                        { name: '企业成熟度', max: 20 },
+                        { name: '存活健康度', max: 100 },
+                        { name: '区县集中度', max: 10 }
+                    ],
+                    name: {
+                        textStyle: { fontSize: 12, color: '#8ab8e6' }
+                    },
+                    splitArea: {
+                        areaStyle: { color: ['rgba(64, 169, 255, 0.02)'] }
+                    },
+                    axisLine: {
+                        lineStyle: { color: 'rgba(64, 169, 255, 0.2)' }
+                    },
+                    splitLine: {
+                        lineStyle: { color: 'rgba(64, 169, 255, 0.1)' }
+                    }
+                },
+                series: [{
+                    type: 'radar',
+                    name: '框选群体',
+                    data: [{
+                        value: selectedValues,
+                        name: '框选群体'
+                    }],
+                    lineStyle: {
+                        color: '#f56c6c',
+                        width: 2,
+                        shadowBlur: 10,
+                        shadowColor: 'rgba(245,108,108,0.3)'
+                    },
+                    areaStyle: {
+                        color: 'rgba(245,108,108,0.2)'
+                    },
+                    itemStyle: {
+                        color: '#f56c6c'
+                    }
+                }, {
+                    type: 'radar',
+                    name: '全市均值',
+                    data: [{
+                        value: allValues,
+                        name: '全市均值'
+                    }],
+                    lineStyle: {
+                        color: '#909399',
+                        width: 1,
+                        type: 'dashed'
+                    },
+                    itemStyle: {
+                        color: '#909399'
+                    },
+                    areaStyle: {
+                        opacity: 0
+                    }
+                }]
+            };
+
+            radarChart.setOption(option);
+            window.__radarChart = radarChart;
+
+            var count = selectedCompanies.length;
+            var msg = count > 0 ?
+                '✅ 已框选 ' + count + ' 家企业' :
+                '⏳ 未框选，显示全市均值';
+            if (loadingEl) {
+                loadingEl.textContent = msg;
+                loadingEl.style.color = count > 0 ? '#67c23a' : '#6a8fba';
+                loadingEl.style.display = 'block';
+                setTimeout(function() {
+                    loadingEl.style.display = 'none';
+                }, 2000);
+            }
+        }
+
+
+        // ============================================================
+        // 第六部分：地图渲染（右上）
+        // ============================================================
+
+        function renderMapFromData(data) {
+            var districtCount = {};
+            $.each(data, function(i, item) {
+                var d = item.所属区县;
+                if (d) {
+                    districtCount[d] = (districtCount[d] || 0) + 1;
+                }
+            });
+
+            var mapData = [];
+            $.each(districtCount, function(name, value) {
+                mapData.push({
+                    name: name,
+                    value: value,
+                    itemStyle: { areaColor: '#1a2a44' }
+                });
+            });
+
+            $.get('深圳市.geojson')
+                .done(function(s) {
+                    echarts.registerMap('sz', s);
+                    mapChart = echarts.init(document.getElementById('map'));
+
+                    var optionMap = {
+                        backgroundColor: 'transparent',
+                        title: {
+                            text: '深圳游戏产业分布图',
+                            left: 'center',
+                            top: 20,
+                            textStyle: {
+                                fontSize: 16,
+                                color: '#aaddff',
+                                textShadow: '0 0 10px rgba(64,169,255,0.5)'
+                            }
+                        },
+                        tooltip: {
+                            trigger: 'item',
+                            formatter: '{b}<br/>游戏企业数量: {c} 家',
+                            backgroundColor: 'rgba(11, 26, 47, 0.9)',
+                            borderColor: '#40a9ff',
+                            textStyle: { color: '#fff' }
+                        },
+                        series: [{
+                            name: '深圳游戏产业分布图',
+                            type: 'map',
+                            map: 'sz',
+                            roam: true,
+                            zoom: 1.2,
+                            label: {
+                                show: true,
+                                fontSize: 13,
+                                color: '#ffffff',
+                                fontWeight: 'bold',
+                                textShadow: '0 0 8px rgba(0,0,0,0.9)'
+                            },
+                            emphasis: {
+                                label: {
+                                    show: true,
+                                    fontWeight: 'bold',
+                                    color: '#ffffff',
+                                    fontSize: 15,
+                                    textShadow: '0 0 12px rgba(0,0,0,1)'
+                                },
+                                itemStyle: {
+                                    areaColor: '#ffd700',
+                                    borderColor: '#ffffff',
+                                    borderWidth: 3
+                                }
+                            },
+                            itemStyle: {
+                                borderColor: '#2a4a7a',
+                                borderWidth: 2,
+                                shadowBlur: 10,
+                                shadowColor: 'rgba(0, 0, 0, 0.5)'
+                            },
+                            data: mapData
+                        }]
+                    };
+
+                    mapChart.setOption(optionMap);
+                    window.__mapChart = mapChart;
+
+                    if (allDistrictData.length > 0) {
+                        setTimeout(function() {
+                            highlightMap(allDistrictData[0].name);
+                            highlightBar(allDistrictData[0].name);
+                        }, 300);
+                    }
+                })
+                .fail(function() {
+                    alert('地图数据加载失败，请检查 深圳市.geojson');
+                });
+        }
+
+
+        // ============================================================
+        // 第七部分：柱状图 + 自动轮播 + 点击联动（左上）
+        // ============================================================
+
+        function initBarAndAutoPlay(data) {
+            var districtCount = {};
+            $.each(data, function(i, item) {
+                var d = item.所属区县;
+                if (d) {
+                    districtCount[d] = (districtCount[d] || 0) + 1;
+                }
+            });
+
+            xData = [];
+            $.each(districtCount, function(name) {
+                xData.push(name);
+            });
+            yData = [];
+            $.each(xData, function(i, name) {
+                yData.push(districtCount[name] || 0);
+            });
+
+            allDistrictData = [];
+            $.each(xData, function(i, name) {
+                allDistrictData.push({ name: name, value: yData[i] });
+            });
+
+            barchart = echarts.init(document.getElementById('barChart'));
+
+            var baroption = {
+                title: {
+                    text: '深圳市各区企业分布情况',
+                    left: 'center',
+                    top: 10,
+                    textStyle: { fontSize: 14, color: '#aaddff', textShadow: '0 0 10px rgba(64,169,255,0.3)' }
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: function(params) {
+                        return params[0].name + '<br/>企业数量：' + params[0].value + ' 家';
+                    },
+                    backgroundColor: 'rgba(11, 26, 47, 0.9)',
+                    borderColor: '#40a9ff',
+                    textStyle: { color: '#fff' }
+                },
+                grid: {
+                    left: '8%',
+                    right: '6%',
+                    top: '18%',
+                    bottom: '15%'
+                },
+                xAxis: {
+                    name: '区域',
+                    type: 'category',
+                    data: xData,
+                    axisLabel: { rotate: 20, color: '#8ab8e6' },
+                    axisLine: { lineStyle: { color: 'rgba(64, 169, 255, 0.3)' } },
+                    axisTick: { lineStyle: { color: 'rgba(64, 169, 255, 0.3)' } },
+                    nameTextStyle: { color: '#aaddff' }
+                },
+                yAxis: {
+                    name: '企业数量',
+                    type: 'value',
+                    axisLabel: { color: '#8ab8e6' },
+                    axisLine: { lineStyle: { color: 'rgba(64, 169, 255, 0.3)' } },
+                    splitLine: { lineStyle: { color: 'rgba(64, 169, 255, 0.1)' } },
+                    nameTextStyle: { color: '#aaddff' }
+                },
+                series: [{
+                    data: yData,
+                    type: 'bar',
+                    barWidth: '45%',
+                    label: {
+                        show: true,
+                        position: 'top',
+                        color: '#aaddff',
+                        fontSize: 11
+                    },
+                    itemStyle: {
+                        color: function(params) {
+                            var val = params.value;
+                            return getBarColorByValue(val);
+                        },
+                        shadowBlur: 10,
+                        shadowColor: 'rgba(64, 169, 255, 0.3)',
+                        borderRadius: [4, 4, 0, 0]
+                    }
+                }]
+            };
+            barchart.setOption(baroption);
+
+            barchart.on('click', function(params) {
+                stopAutoPlay();
+                var districtName = params.name;
+                highlightMap(districtName);
+                highlightBar(districtName);
+            });
+
+            startAutoPlay();
+        }
+
+
+        // ============================================================
+        // 第八部分：轮播控制 + 高亮函数
+        // ============================================================
+
+        function startAutoPlay() {
+            if (timer) clearInterval(timer);
+            if (allDistrictData.length === 0) return;
+
+            timer = setInterval(function() {
+                currentIndex = (currentIndex + 1) % allDistrictData.length;
+                var district = allDistrictData[currentIndex];
+                highlightMap(district.name);
+                highlightBar(district.name);
+            }, 1500);
+        }
+
+        function stopAutoPlay() {
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+            }
+        }
+
+        function highlightMap(districtName) {
+            if (!mapChart) return;
+
+            var targetValue = 0;
+            $.each(allDistrictData, function(i, d) {
+                if (d.name === districtName) {
+                    targetValue = d.value;
+                }
+            });
+
+            var color = getMapColorByValue(targetValue);
+
+            var newData = [];
+            $.each(allDistrictData, function(i, d) {
+                if (d.name === districtName) {
+                    newData.push({
+                        name: d.name,
+                        value: d.value,
+                        itemStyle: { areaColor: color }
+                    });
+                } else {
+                    newData.push({
+                        name: d.name,
+                        value: d.value,
+                        itemStyle: { areaColor: '#1a2a44' }
+                    });
+                }
+            });
+
+            mapChart.setOption({
+                series: [{
+                    data: newData
+                }]
+            });
+        }
+
+        function highlightBar(districtName) {
+            if (!barchart) return;
+
+            var index = -1;
+            $.each(xData, function(i, name) {
+                if (name === districtName) {
+                    index = i;
+                }
+            });
+            if (index === -1) return;
+
+            barchart.dispatchAction({ type: 'downplay', seriesIndex: 0 });
+            barchart.dispatchAction({
+                type: 'highlight',
+                seriesIndex: 0,
+                dataIndex: index
+            });
+            barchart.dispatchAction({
+                type: 'showTip',
+                seriesIndex: 0,
+                dataIndex: index
+            });
+        }
+
+
+        // ============================================================
+        // 第九部分：窗口自适应
+        // ============================================================
+
+        window.addEventListener('resize', function() {
+            if (scatterChart) scatterChart.resize();
+            if (radarChart) radarChart.resize();
+            if (mapChart) mapChart.resize();
+            if (barchart) barchart.resize();
+        });
+
+
+        // ============================================================
+        // 第十部分：启动主程序
+        // ============================================================
+
+        $(document).ready(function() {
+            $.get('data.json')
+                .done(function(data) {
+                    console.log('✅ 数据加载成功，共 ' + data.length + ' 条');
+
+                    renderScatter(data);
+
+                    var districtCount = {};
+                    $.each(data, function(i, item) {
+                        var d = item.所属区县;
+                        if (d) {
+                            districtCount[d] = (districtCount[d] || 0) + 1;
+                        }
+                    });
+
+                    xData = [];
+                    $.each(districtCount, function(name) {
+                        xData.push(name);
+                    });
+                    yData = [];
+                    $.each(xData, function(i, name) {
+                        yData.push(districtCount[name] || 0);
+                    });
+                    allDistrictData = [];
+                    $.each(xData, function(i, name) {
+                        allDistrictData.push({ name: name, value: yData[i] });
+                    });
+
+                    renderMapFromData(data);
+                    initBarAndAutoPlay(data);
+
+                    renderRadarChart([]);
+
+                    console.log('✅ 所有图表初始化完成');
+                })
+                .fail(function() {
+                    alert('数据加载失败，请检查 data.json');
+                });
+        });
+    </script>
+</body>
+</html>
